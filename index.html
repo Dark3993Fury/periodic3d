@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f17" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="An interactive 3D periodic table. Rotate it, search it, tap any element to see its atom and emission spectrum." />
+    <meta property="og:title" content="Periodic 3D — an interactive 3D periodic table" />
+    <meta property="og:description" content="Rotate it, search it, tap any element to see its atom and spectrum." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f17'/%3E%3Cg fill='none' stroke='%233ad1e6' stroke-width='3'%3E%3Cellipse cx='32' cy='32' rx='24' ry='9'/%3E%3Cellipse cx='32' cy='32' rx='24' ry='9' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='24' ry='9' transform='rotate(-60 32 32)'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='4.5' fill='%233ad1e6'/%3E%3C/svg%3E" />
+    <title>Periodic 3D</title>
+    <style>
+      /* Inline so the first paint is already dark: no white flash before CSS loads. */
+      html, body { background: #0b0f17; color: #e6e9ef; margin: 0; }
+    </style>
+  </head>
+  <body class="is-loading">
+    <div id="scene" aria-label="3D periodic table. Drag to rotate, scroll or pinch to zoom, tap an element for details."></div>
+
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Periodic 3D home">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="3.2">
+            <ellipse cx="32" cy="32" rx="24" ry="9" />
+            <ellipse cx="32" cy="32" rx="24" ry="9" transform="rotate(60 32 32)" />
+            <ellipse cx="32" cy="32" rx="24" ry="9" transform="rotate(-60 32 32)" />
+          </g>
+          <circle cx="32" cy="32" r="4.5" fill="currentColor" />
+        </svg>
+        <span class="brand-name">Periodic<span>3D</span></span>
+      </a>
+      <div class="search" role="search">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="search" type="search" placeholder="Search: Fe, iron, 26…" autocomplete="off" spellcheck="false"
+               aria-label="Search elements by symbol, name or number" aria-controls="search-results" aria-expanded="false" />
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
+        <ul id="search-results" role="listbox" hidden></ul>
+      </div>
+    </header>
+
+    <nav class="toolbar" aria-label="View controls">
+      <div class="seg" role="group" aria-label="Layout" id="layout-buttons">
+        <button type="button" data-layout="table" aria-pressed="true">Table</button>
+        <button type="button" data-layout="sphere" aria-pressed="false">Sphere</button>
+        <button type="button" data-layout="helix" aria-pressed="false">Helix</button>
+        <button type="button" data-layout="grid" aria-pressed="false">Grid</button>
+      </div>
+      <label class="select-wrap">
+        <span>Colour</span>
+        <select id="color-mode">
+          <option value="category">Category</option>
+          <option value="state">State at temperature</option>
+          <optgroup label="Heatmap">
+            <option value="heat:electronegativity">Electronegativity</option>
+            <option value="heat:atomicRadius">Atomic radius</option>
+            <option value="heat:density">Density</option>
+            <option value="heat:meltingPointK">Melting point</option>
+            <option value="heat:ionizationEnergy">Ionization energy</option>
+          </optgroup>
+        </select>
+      </label>
+      <div class="temp" id="temp-wrap" hidden>
+        <label for="temperature">Temp</label>
+        <input id="temperature" type="range" min="0" max="6000" step="1" value="298" />
+        <output id="temp-out" for="temperature">298 K</output>
+        <button type="button" class="ghost small" id="temp-room" title="Room temperature">25 °C</button>
+      </div>
+      <div class="tour-buttons">
+        <button type="button" class="accent" id="tour-play" aria-label="Play song tour">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ico-play"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ico-pause"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
+          <span>Song tour</span>
+        </button>
+        <button type="button" class="ghost" id="tour-stop" aria-label="Stop song tour" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <button type="button" class="ghost" id="reset-view" title="Reset view">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Reset</span>
+      </button>
+    </nav>
+
+    <aside id="legend" class="legend" aria-label="Legend"></aside>
+
+    <aside id="panel" class="panel" aria-label="Element details" hidden>
+      <div class="panel-scroll" id="panel-body"></div>
+    </aside>
+
+    <div id="tour-caption" class="tour-caption" aria-live="polite" hidden></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="fps" class="fps" hidden></div>
+
+    <div id="loader" class="loader" aria-hidden="true">
+      <div class="loader-atom"><span></span><span></span><span></span></div>
+    </div>
+
+    <footer class="credits">
+      <span>Data: <a href="https://pubchem.ncbi.nlm.nih.gov/periodic-table/" target="_blank" rel="noopener">PubChem (NIH)</a></span>
+      <span><a href="https://github.com/Bowserinator/Periodic-Table-JSON" target="_blank" rel="noopener">Periodic-Table-JSON</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>)</span>
+      <span>Spectra: <a href="https://physics.nist.gov/asd" target="_blank" rel="noopener">NIST ASD</a></span>
+      <span>Song: “The Elements” by Tom Lehrer (public domain)</span>
+      <span class="c-extra">Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
+    </footer>
+
+    <noscript><p class="noscript">This interactive periodic table needs JavaScript.</p></noscript>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
