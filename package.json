@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "data": "python3 scripts/build_data.py && python3 scripts/build_spectra.py && python3 scripts/validate_data.py"
+    "data": "python3 scripts/build_data.py && python3 scripts/build_spectra.py && python3 scripts/build_timeline.py && python3 scripts/validate_data.py"
   },
   "devDependencies": {
     "vite": "^6.3.5"
